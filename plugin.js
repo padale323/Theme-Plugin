@@ -1,34 +1,79 @@
-(function() { // Wrap in an IIFE to prevent variable "leakage" into the global scope
+(function() { // Wrap in an IIFE to keep the global scope clean
 
-    // Function to check if a string is a valid CSS color
-    function validColor(value) {
-        const s = new Option().style; // Create a temporary, unrendered HTML element style object
-        s.color = value;              // Try to apply the user's input as a color
-        return s.color !== "";        // If the browser accepts it, the string won't be empty
+    // Helper function to save a color to a cookie that lasts for 10 years
+    function saveColor(name, value) {
+        // Set cookie: name=value; max-age is 10 years in seconds; path=/ makes it available site-wide
+        document.cookie = `${name}=${value}; max-age=315360000; path=/`; 
     }
 
-    // Register the "bg" command to the terminal's system
+    // Helper function to retrieve a specific cookie value by its name
+    function getCookie(name) {
+        const value = `; ${document.cookie}`; // Prefix with semicolon for easier string splitting
+        const parts = value.split(`; ${name}=`); // Split the cookie string at the specific name
+        if (parts.length === 2) return parts.pop().split(';').shift(); // Pop the value out and clean it
+    }
+
+    // Function to check if the user's input is a valid CSS color string
+    function validColor(value) {
+        const s = new Option().style; // Create a dummy style object in memory
+        s.color = value;              // Try to set the color property
+        return s.color !== "";        // If it's valid, the browser will store it; if not, it stays empty
+    }
+
+    // --- Startup Logic: Check for and apply saved themes ---
+    const savedBg = getCookie("terminal_bg"); // Check cookies for a saved background
+    const savedText = getCookie("terminal_glow"); // Check cookies for a saved text color
+
+    if (savedBg) document.documentElement.style.setProperty("--bg", savedBg); // Apply saved background if found
+    if (savedText) document.documentElement.style.setProperty("--glow", savedText); // Apply saved text color if found
+
+    // Register the "bg" (background) command
     window.registerCommand(
-        "bg",                         // The keyword the user types
-        "Changes the background color.", // The description for the help menu
-        function(args) {              // The function that runs when "bg" is called
-            if (!args) return print("Provide a color."); // Error if no color is typed
-            if (!validColor(args)) return print("Invalid color format."); // Error if color is fake
-            document.documentElement.style.setProperty("--bg", args); // Update the CSS variable --bg
-            print(`Background color updated to ${args}.`); // Feedback sent to the terminal
+        "bg", // The command keyword
+        "Changes background color. Use --non-permanent to avoid saving.", // Help text description
+        function(args) { // Function that runs when the command is called
+            if (!args) return print("Provide a color."); // Error if no arguments are provided
+            
+            const isPermanent = !args.includes("--non-permanent"); // Check if the user wants to save this
+            const color = args.replace("--non-permanent", "").trim(); // Remove the flag to isolate the color name
+
+            if (!validColor(color)) return print("Invalid color format."); // Validate the isolated color string
+            
+            document.documentElement.style.setProperty("--bg", color); // Update the CSS variable in real-time
+            
+            if (isPermanent) { // If the user didn't use the --non-permanent flag...
+                saveColor("terminal_bg", color); // Save it to a 10-year cookie
+                print(`Background updated and saved: ${color}`); // Success message for permanent change
+            } else {
+                print(`Background updated (temporary): ${color}`); // Success message for temporary change
+            }
         }
     );
 
-    // Register the "text" command to the terminal's system
+    // Register the "text" (glow) command
     window.registerCommand(
-        "text",                       // The keyword the user types
-        "Changes the text glow color.", // The description for the help menu
-        function(args) {              // The function that runs when "text" is called
-            if (!args) return print("Provide a color."); // Check for missing arguments
-            if (!validColor(args)) return print("Invalid color format."); // Validate CSS color
-            document.documentElement.style.setProperty("--glow", args); // Update the CSS variable --glow
-            print(`Text color updated to ${args}.`); // Feedback sent to the terminal
+        "text", // The command keyword
+        "Changes text color. Use --non-permanent to avoid saving.", // Help text description
+        function(args) { // Function that runs when the command is called
+            if (!args) return print("Provide a color."); // Error if no arguments are provided
+            
+            const isPermanent = !args.includes("--non-permanent"); // Determine if we should save to cookies
+            const color = args.replace("--non-permanent", "").trim(); // Clean the flag out of the string
+
+            if (!validColor(color)) return print("Invalid color format."); // Validate the CSS color
+            
+            document.documentElement.style.setProperty("--glow", color); // Update the CSS variable in real-time
+            
+            if (isPermanent) { // If it is meant to be a permanent change...
+                saveColor("terminal_glow", color); // Save to a 10-year cookie
+                print(`Text color updated and saved: ${color}`); // Success message
+            } else {
+                print(`Text color updated (temporary): ${color}`); // Success message
+            }
         }
     );
 
-})(); // Close and immediately execute the function
+    // Inform the user that the theme system is ready to use
+    print("[Theme Plugin Loaded] 10-year persistence active. Use --non-permanent for one-time changes.");
+
+})(); // Close and execute the IIFE
