@@ -73,7 +73,5 @@
         }
     );
 
-    // Inform the user that the theme system is ready to use
-    print("[Theme Plugin Loaded] 10-year persistence active. Use --non-permanent for one-time changes.");
 
 })(); // Close and execute the IIFE
