@@ -1,3 +1,5 @@
+// @request-earlyload
+
 (function() { // Wrap in an IIFE to keep the global scope clean
 
     // Helper function to save a color to a cookie that lasts for 10 years
